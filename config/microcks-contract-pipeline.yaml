@@ -1,0 +1,55 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: microcks-pipeline
+spec:
+  tasks:
+    - name: git-clone
+      params:
+        - name: url
+          value: 'https://github.com/anmiralles/sample-quarkus-microservices.git'
+        - name: revision
+          value: master
+        - name: submodules
+          value: 'true'
+        - name: depth
+          value: '1'
+        - name: sslVerify
+          value: 'false'
+        - name: crtFileName
+          value: ca-bundle.crt
+        - name: deleteExisting
+          value: 'true'
+        - name: verbose
+          value: 'true'
+        - name: gitInitImage
+          value: >-
+            registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:a538c423e7a11aae6ae582a411fdb090936458075f99af4ce5add038bb6983e8
+        - name: userHome
+          value: /tekton/home
+      taskRef:
+        kind: ClusterTask
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: source-dir
+    - name: maven-contract-tests
+      params:
+        - name: MAVEN_IMAGE
+          value: >-
+            image-registry.openshift-image-registry.svc:5000/openshift/java:latest
+        - name: CONTEXT_DIR
+          value: department-service
+        - name: EMPLOYEE_URL
+          value: >-
+            http://my-microcksinstall.microcks.svc.cluster.local:8080/rest/employee-service+API/1.2
+      runAfter:
+        - git-clone
+      taskRef:
+        kind: Task
+        name: maven-contract-tests
+      workspaces:
+        - name: source
+          workspace: source-dir
+  workspaces:
+    - name: source-dir

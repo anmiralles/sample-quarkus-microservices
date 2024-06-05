@@ -1,0 +1,34 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: maven-contract-tests
+spec:
+  params:
+    - default: >-
+        image-registry.openshift-image-registry.svc:5000/openshift/java:latest
+      description: Maven base image
+      name: MAVEN_IMAGE
+      type: string
+    - default: .
+      description: >-
+        The context directory within the repository for sources on which we want
+        to execute maven goals.
+      name: CONTEXT_DIR
+      type: string
+    - name: EMPLOYEE_URL
+      default: http://my-microcksinstall.microcks.svc.cluster.local:8080/rest/employee-service+API/1.2
+  steps:
+    - image: $(params.MAVEN_IMAGE)
+      name: mvn-command
+      env:
+        - name: QUARKUS_REST_CLIENT_EMPLOYEE_URL
+          value: $(params.EMPLOYEE_URL)
+      resources: {}
+      script: >
+        #!/usr/bin/env bash
+
+        /usr/bin/mvn clean package -Pmicrocks
+
+      workingDir: $(workspaces.source.path)/$(params.CONTEXT_DIR)
+  workspaces:
+    - name: source
